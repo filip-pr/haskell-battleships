@@ -1,17 +1,9 @@
-
-
 module GameBoard where
 
-import Data.Maybe (fromJust)
-
-shipChar = 'X'
-
-unknownFieldChar = 'O'
-
-missFieldChar = 'M'
-
-hitFieldChar = 'H'
-
+shipChar = '#'
+unknownFieldChar = ' '
+missFieldChar = '_'
+hitFieldChar = '@'
 sunkenFieldChar = 'S'
 
 type Coordinates = (Int, Int)
@@ -39,6 +31,7 @@ data Ship = Ship
     deriving (Show, Eq)
 
 data GameBoard = GameBoard [[Field]] [Ship]
+    deriving (Show, Eq)
 
 isNeighbor :: Coordinates -> Coordinates -> Bool
 isNeighbor (x1, y1) (x2, y2) = max (abs (x1 - x2)) (abs (y1 - y2)) <= 1
@@ -61,18 +54,30 @@ isInsideBoard :: [Coordinates] -> Bool
 isInsideBoard [] = True
 isInsideBoard ((x, y) : rest) = 0 <= x && x < 10 && 0 <= y && y < 10 && isInsideBoard rest
 
-isDisjunct :: (Eq a) => [a] -> [a] -> Bool
-isDisjunct [] _ = True
-isDisjunct (element:rest) list = notElem element list && isDisjunct rest list
+distance :: Coordinates -> Coordinates -> Int
+distance (x1, y1) (x2, y2) = max (abs (x1 - x2)) (abs (y1 - y2))
 
 collidesWith :: Ship -> [Ship] -> Bool
-collidesWith (Ship _ [] _) _ = False
-collidesWith (Ship _ coords _) ships = not (isDisjunct coords (concatMap (\(Ship _ coordinates _) -> coordinates) ships))
+collidesWith (Ship _ coords _) ships
+    | null coords || null ships = False
+    | otherwise = minimum [distance coord otherCoord | coord <- coords, (Ship _ otherCoords _) <- ships, otherCoord <- otherCoords] <= 1
 
 addShip :: GameBoard -> Ship -> Maybe GameBoard
 addShip (GameBoard fields ships) ship@(Ship _ coords _)
-    | not (collidesWith ship ships) && isInsideBoard coords = Just (GameBoard fields (ship:ships))
+    | not (collidesWith ship ships) && isInsideBoard coords = Just (GameBoard fields (ship : ships))
     | otherwise = Nothing
+
+getShip :: Coordinates -> [Ship] -> Maybe Ship
+getShip _ [] = Nothing
+getShip coords (ship@(Ship _ shipCoords _) : rest)
+    | coords `elem` shipCoords = Just ship
+    | otherwise = getShip coords rest
+
+isShip :: Coordinates -> [Ship] -> Bool
+isShip coords ships = case getShip coords ships of
+    Just _ -> True
+    Nothing -> False
+
 
 showShip :: Ship -> String
 showShip (Ship _ _ remainingHits) | remainingHits < 0 = ""
@@ -102,24 +107,15 @@ showFieldRow (rowLabel, fieldRow, ships) =
     ++ "   +---+---+---+---+---+---+---+---+---+---+\n"
 
 
+showBoardInformation :: GameBoard -> Bool -> String
+showBoardInformation gameboard@(GameBoard fields ships) isYour
+    | isYour = "Your information:\n\n" ++ "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") ships ++ showBoard gameboard isYour
+    | otherwise = "Opponent's information:\n\n" ++ "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") ships ++ showBoard gameboard isYour
+
+
 showBoard :: GameBoard -> Bool -> String
-showBoard gameboard@(GameBoard fields ships) isYour
-    | isYour = "Your information:\n\n" ++ "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") ships ++ _showBoard gameboard isYour
-    | otherwise = "Opponent's information:\n\n" ++ "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") ships ++ _showBoard gameboard isYour
-
-
-isShip :: Coordinates -> [Ship] -> Bool
-isShip _ [] = False
-isShip coords (ship@(Ship _ shipCoords _):rest) =
-    elem coords shipCoords || isShip coords rest
-
-_showBoard :: GameBoard -> Bool -> String
-_showBoard (GameBoard fields ships) isYour =
+showBoard (GameBoard fields ships) isYour =
     "GameBoard:\n\n"
     ++ "     0   1   2   3   4   5   6   7   8   9  \n"
     ++ "   +---+---+---+---+---+---+---+---+---+---+\n"
     ++ concatMap showFieldRow (zip3 ['A'..] fields [[isYour && isShip (row, col) ships | col <- [0 .. 9]] | row <- [0 .. 9]])
-
-
-
-testBoard = fromJust (addShip newBoard (newShip Carrier (0, 0) Vertical))
