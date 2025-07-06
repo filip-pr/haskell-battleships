@@ -1,4 +1,18 @@
+
+
 module GameBoard where
+
+import Data.Maybe (fromJust)
+
+shipChar = 'X'
+
+unknownFieldChar = 'O'
+
+missFieldChar = 'M'
+
+hitFieldChar = 'H'
+
+sunkenFieldChar = 'S'
 
 type Coordinates = (Int, Int)
 
@@ -55,8 +69,57 @@ collidesWith :: Ship -> [Ship] -> Bool
 collidesWith (Ship _ [] _) _ = False
 collidesWith (Ship _ coords _) ships = not (isDisjunct coords (concatMap (\(Ship _ coordinates _) -> coordinates) ships))
 
-
 addShip :: GameBoard -> Ship -> Maybe GameBoard
-addShip (GameBoard fields ships) ship
-    | not (collidesWith ship ships) = Just (GameBoard fields (ship:ships))
+addShip (GameBoard fields ships) ship@(Ship _ coords _)
+    | not (collidesWith ship ships) && isInsideBoard coords = Just (GameBoard fields (ship:ships))
     | otherwise = Nothing
+
+showShip :: Ship -> String
+showShip (Ship _ _ remainingHits) | remainingHits < 0 = ""
+showShip (Ship Carrier _ remainingHits) = "-Carrier:   " ++ replicate 4 shipChar ++ "\n" ++ replicate 12 ' ' ++ replicate 4 shipChar
+showShip (Ship Battleship _ remainingHits) = "-Battleship:" ++ replicate 4 shipChar
+showShip (Ship Submarine _ remainingHits) = "-Submarine: " ++ replicate 2 shipChar ++ "\n" ++ replicate 12 ' ' ++ replicate 2 shipChar
+showShip (Ship Destroyer _ remainingHits) = "-Destroyer: " ++ replicate 3 shipChar
+showShip (Ship PatrolBoat _ remainingHits) = "-Patrol Boat:" ++ replicate 2 shipChar
+
+showFieldCell :: (Field, Bool) -> String
+showFieldCell (field, ship) = " " ++ [showChar] ++ " |"
+    where
+    fieldChar = case field of
+        Unknown -> unknownFieldChar
+        Miss -> missFieldChar
+        Hit -> hitFieldChar
+        Sunken -> sunkenFieldChar
+    showChar = if ship then shipChar else fieldChar
+
+showFieldRow :: (Char, [Field], [Bool]) -> String
+showFieldRow (rowLabel, fieldRow, ships) =
+    " "
+    ++ [rowLabel]
+    ++ " |"
+    ++ concatMap showFieldCell (zip fieldRow ships)
+    ++ "\n"
+    ++ "   +---+---+---+---+---+---+---+---+---+---+\n"
+
+
+showBoard :: GameBoard -> Bool -> String
+showBoard gameboard@(GameBoard fields ships) isYour
+    | isYour = "Your information:\n\n" ++ "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") ships ++ _showBoard gameboard isYour
+    | otherwise = "Opponent's information:\n\n" ++ "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") ships ++ _showBoard gameboard isYour
+
+
+isShip :: Coordinates -> [Ship] -> Bool
+isShip _ [] = False
+isShip coords (ship@(Ship _ shipCoords _):rest) =
+    elem coords shipCoords || isShip coords rest
+
+_showBoard :: GameBoard -> Bool -> String
+_showBoard (GameBoard fields ships) isYour =
+    "GameBoard:\n\n"
+    ++ "     0   1   2   3   4   5   6   7   8   9  \n"
+    ++ "   +---+---+---+---+---+---+---+---+---+---+\n"
+    ++ concatMap showFieldRow (zip3 ['A'..] fields [[isYour && isShip (row, col) ships | col <- [0 .. 9]] | row <- [0 .. 9]])
+
+
+
+testBoard = fromJust (addShip newBoard (newShip Carrier (0, 0) Vertical))
