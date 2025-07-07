@@ -1,10 +1,6 @@
-module GameBoard where
+module GameLogic where
 
-shipChar = '#'
-unknownFieldChar = ' '
-missFieldChar = '_'
-hitFieldChar = '@'
-sunkenFieldChar = 'S'
+import Data.Maybe (fromJust)
 
 type Coordinates = (Int, Int)
 
@@ -22,12 +18,7 @@ data ShipType =
     PatrolBoat -- 2x1
     deriving (Show, Eq)
 
-data Ship = Ship
-    {
-    shipType :: ShipType,
-    coords :: [Coordinates],
-    remainingHits :: Int
-    }
+data Ship = Ship ShipType [Coordinates] Int
     deriving (Show, Eq)
 
 data GameBoard = GameBoard [[Field]] [Ship]
@@ -62,10 +53,11 @@ collidesWith (Ship _ coords _) ships
     | null coords || null ships = False
     | otherwise = minimum [distance coord otherCoord | coord <- coords, (Ship _ otherCoords _) <- ships, otherCoord <- otherCoords] <= 1
 
-addShip :: GameBoard -> Ship -> Maybe GameBoard
+addShip :: GameBoard -> Ship -> Either GameBoard String
 addShip (GameBoard fields ships) ship@(Ship _ coords _)
-    | not (collidesWith ship ships) && isInsideBoard coords = Just (GameBoard fields (ship : ships))
-    | otherwise = Nothing
+    | collidesWith ship ships = Right "Ships must be at least one square apart from each other."
+    | not (isInsideBoard coords) = Right "Ship must be place fully inside the board."
+    | otherwise = Left (GameBoard fields (ship : ships))
 
 getShip :: Coordinates -> [Ship] -> Maybe Ship
 getShip _ [] = Nothing
@@ -78,6 +70,58 @@ isShip coords ships = case getShip coords ships of
     Just _ -> True
     Nothing -> False
 
+replaceNth :: Int -> a -> [a] -> [a]
+replaceNth n newVal values
+    | n < 0 || n >= length values = values
+    | otherwise = take n values ++ [newVal] ++ drop (n + 1) values
+
+replaceField :: Field -> Coordinates -> [[Field]] -> [[Field]]
+replaceField newField (x, y) fields
+    | not (isInsideBoard [(x, y)]) = fields
+    | otherwise = replaceNth y (replaceNth x newField (fields !! y)) fields
+
+registerHit :: GameBoard -> Coordinates -> (Maybe GameBoard, String)
+registerHit (GameBoard fields ships) coords@(x, y)
+    | not (isInsideBoard [coords]) = (Nothing, "Coordinates are out of bounds!")
+    | fields !! y !! x /= Unknown = (Nothing, "Field already hit!")
+    | otherwise = (Just newGameBoard, responseMessage) where
+        hitShip = getShip coords ships
+        newField = case hitShip of
+            Just (Ship _ _ remainingHits) ->
+                if remainingHits <= 1
+                then Sunken
+                else Hit
+            Nothing -> Miss
+        shipType = case hitShip of
+            Just (Ship st _ _) -> st
+            Nothing -> Carrier -- Default to Carrier if no ship is hit
+        shipCoords = case hitShip of
+            Just (Ship _ coords _) -> coords
+            Nothing -> []
+        responseMessage = case newField of
+            Sunken -> "Hit!\n" ++ showShip (fromJust hitShip)  ++ "sunken!"
+            Hit -> "Hit!"
+            Miss -> "Miss!"
+        newFields = case newField of
+            Sunken -> foldr (replaceField Sunken) fields shipCoords
+            _ -> replaceField newField coords fields
+        newShips = case hitShip of
+            Just ship -> map (\s@(Ship st sc rh) -> if isShip coords [s] then Ship st sc (rh-1) else s) ships
+            Nothing -> ships
+        newGameBoard = GameBoard newFields newShips
+
+getRemainingShips :: [Ship] -> [Ship]
+getRemainingShips [] = []
+getRemainingShips (ship@(Ship _ _ remainingHits) : rest)
+    | remainingHits <= 0 = getRemainingShips rest
+    | otherwise = ship : getRemainingShips rest
+
+shipChar = '#'
+unknownFieldChar = ' '
+missFieldChar = 'O'
+
+hitFieldChar = '@'
+sunkenFieldChar = 'S'
 
 showShip :: Ship -> String
 showShip (Ship _ _ remainingHits) | remainingHits < 0 = ""
@@ -109,8 +153,8 @@ showFieldRow (rowLabel, fieldRow, ships) =
 
 showBoardInformation :: GameBoard -> Bool -> String
 showBoardInformation gameboard@(GameBoard fields ships) isYour
-    | isYour = "Your information:\n\n" ++ "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") ships ++ showBoard gameboard isYour
-    | otherwise = "Opponent's information:\n\n" ++ "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") ships ++ showBoard gameboard isYour
+    | isYour = "Your information:\n\n" ++ "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") (getRemainingShips ships) ++ showBoard gameboard isYour
+    | otherwise = "Opponent's information:\n\n" ++ "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") (getRemainingShips ships) ++ showBoard gameboard isYour
 
 
 showBoard :: GameBoard -> Bool -> String

@@ -1,12 +1,13 @@
 
 module Main where
 
-import Data.Maybe (fromJust)
+import Data.Either (fromLeft)
 
-import GameBoard
+import GameLogic
 
 
-testBoard = fromJust (addShip (fromJust (addShip newBoard (newShip Carrier (0, 0) Vertical))) (newShip Carrier (3, 0) Vertical))
+
+testBoard = fromLeft newBoard (addShip newBoard (newShip Carrier (3, 2) Horizontal))
 
 main :: IO ()
 main = do
