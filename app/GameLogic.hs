@@ -189,8 +189,8 @@ showBoard (GameBoard fields ships) isYour =
 -- | Displays the game board information, including remaining ships and field states
 -- (with revealed ship positions if the board is the player's)
 showBoardInformation :: GameBoard -> Bool -> String
-showBoardInformation gameboard@(GameBoard fields ships) isYour
-    = title ++ "\n\n" ++ showRemainingShips ++ showBoard gameboard isYour
+showBoardInformation gameboard@(GameBoard _ ships) isYour
+    = title ++ "\n\n" ++ showRemainingShips ships ++ showBoard gameboard isYour
     where
         title = if isYour
             then "Your Game Board:"
