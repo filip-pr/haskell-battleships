@@ -45,7 +45,7 @@ newShip PatrolBoat (x, y) Vertical = Ship PatrolBoat [(x, y), (x, y + 1)] 2
 
 -- | Creates a new game board with all fields set to Unknown and no ships
 newBoard :: GameBoard
-newBoard = GameBoard [[Unknown | _ <- [1 .. 10]] | _ <- [1 .. 10]] []
+newBoard = GameBoard [[Unknown | _ <- [1 .. 10 :: Int]] | _ <- [1 .. 10 :: Int]] []
 
 -- | Checks if a list of coordinates is fully inside the board (0 <= x < 10, 0 <= y < 10)
 isInsideBoard :: [Coordinates] -> Bool
@@ -108,21 +108,19 @@ registerHit (GameBoard fields ships) coords@(x, y)
                 then Sunken
                 else Hit
             Nothing -> Miss
-        shipType = case hitShip of
-            Just (Ship st _ _) -> st
-            Nothing -> Carrier -- Default to Carrier if no ship is hit
         shipCoords = case hitShip of
-            Just (Ship _ coords _) -> coords
+            Just (Ship _ c _) -> c
             Nothing -> []
         responseMessage = case newFieldState of
             Sunken -> "Hit!\n" ++ showShip (fromJust hitShip)  ++ "sunken!"
             Hit -> "Hit!"
             Miss -> "Miss!"
+            Unknown -> error "This shouldn't happen"
         newFieldStates = case newFieldState of
             Sunken -> foldr (replaceFieldState Sunken) fields shipCoords
             _ -> replaceFieldState newFieldState coords fields
         newShips = case hitShip of
-            Just ship -> map (\s@(Ship st sc rh) -> if isShip coords [s] then Ship st sc (rh-1) else s) ships
+            Just _ -> map (\s@(Ship st sc rh) -> if isShip coords [s] then Ship st sc (rh-1) else s) ships
             Nothing -> ships
         newGameBoard = GameBoard newFieldStates newShips
 
@@ -136,6 +134,7 @@ getRemainingShips (ship@(Ship _ _ remainingHits) : rest)
 
 -- | Constants for displaying the game board
 
+shipChar, unknownFieldStateChar, missFieldStateChar, hitFieldStateChar, sunkenFieldStateChar :: Char
 shipChar = '#'
 unknownFieldStateChar = ' '
 missFieldStateChar = 'O'
@@ -147,22 +146,22 @@ sunkenFieldStateChar = 'S'
 -- | Displays the ship in a formatted string
 showShip :: Ship -> String
 showShip (Ship _ _ remainingHits) | remainingHits < 0 = ""
-showShip (Ship Carrier _ remainingHits) = "-Carrier:   " ++ replicate 4 shipChar ++ "\n" ++ replicate 12 ' ' ++ replicate 4 shipChar
-showShip (Ship Battleship _ remainingHits) = "-Battleship:" ++ replicate 4 shipChar
-showShip (Ship Submarine _ remainingHits) = "-Submarine: " ++ replicate 2 shipChar ++ "\n" ++ replicate 12 ' ' ++ replicate 2 shipChar
-showShip (Ship Destroyer _ remainingHits) = "-Destroyer: " ++ replicate 3 shipChar
-showShip (Ship PatrolBoat _ remainingHits) = "-Patrol Boat:" ++ replicate 2 shipChar
+showShip (Ship Carrier _ _) = "-Carrier:   " ++ replicate 4 shipChar ++ "\n" ++ replicate 12 ' ' ++ replicate 4 shipChar
+showShip (Ship Battleship _ _) = "-Battleship:" ++ replicate 4 shipChar
+showShip (Ship Submarine _ _) = "-Submarine: " ++ replicate 2 shipChar ++ "\n" ++ replicate 12 ' ' ++ replicate 2 shipChar
+showShip (Ship Destroyer _ _) = "-Destroyer: " ++ replicate 3 shipChar
+showShip (Ship PatrolBoat _ _) = "-Patrol Boat:" ++ replicate 2 shipChar
 
 -- | Displays the field state
 showFieldState :: (FieldState, Bool) -> String
-showFieldState (field, ship) = " " ++ [showChar] ++ " |"
+showFieldState (field, ship) = " " ++ [fieldShowChar] ++ " |"
     where
     fieldChar = case field of
         Unknown -> unknownFieldStateChar
         Miss -> missFieldStateChar
         Hit -> hitFieldStateChar
         Sunken -> sunkenFieldStateChar
-    showChar = if ship then shipChar else fieldChar
+    fieldShowChar = if ship then shipChar else fieldChar
 
 -- | Displays a row of field states with the row label with ships indicated by a boolean list
 showFieldStateRow :: (Char, [FieldState], [Bool]) -> String
@@ -184,7 +183,7 @@ showBoard (GameBoard fields ships) isYour =
     "GameBoard:\n\n"
     ++ "     0   1   2   3   4   5   6   7   8   9  \n"
     ++ "   +---+---+---+---+---+---+---+---+---+---+\n"
-    ++ concatMap showFieldStateRow (zip3 ['A' ..] fields [[isYour && isShip (row, col) ships | col <- [0 .. 9]] | row <- [0 .. 9]])
+    ++ concatMap showFieldStateRow (zip3 ['A' ..] fields [[isYour && isShip (row, col) ships | col <- [0 .. 9 :: Int]] | row <- [0 .. 9 :: Int]])
 
 -- | Displays the game board information, including remaining ships and field states
 -- (with revealed ship positions if the board is the player's)
