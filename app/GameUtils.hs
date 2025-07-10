@@ -119,7 +119,7 @@ registerHit (GameBoard fields ships) coords@(x, y)
             Just (Ship _ c _) -> c
             Nothing -> []
         responseMessage = case newFieldState of
-            Sunken -> "Hit!\n" ++ showShip (fromJust hitShip)  ++ "sunken!"
+            Sunken -> "Hit!\n" ++ show (fromJust hitShip)  ++ "sunken!"
             Hit -> "Hit!"
             Miss -> "Miss!"
             Unknown -> error "This shouldn't happen"
@@ -139,65 +139,56 @@ getRemainingShips (ship@(Ship _ _ remainingHits) : rest)
     | otherwise = ship : getRemainingShips rest
 
 
--- | Constants for displaying the game board
-
-shipChar, unknownFieldStateChar, missFieldStateChar, hitFieldStateChar, sunkenFieldStateChar :: Char
-shipChar = '#'
-unknownFieldStateChar = ' '
-missFieldStateChar = 'O'
-
-hitFieldStateChar = '@'
-sunkenFieldStateChar = 'S'
-
-
--- | Displays the ship in a formatted string
-showShip :: Ship -> String
-showShip (Ship _ _ remainingHits) | remainingHits < 0 = ""
-showShip (Ship Carrier _ _) =    "-Carrier:     " ++ replicate 4 shipChar ++ "\n" ++ replicate 14 ' ' ++ replicate 4 shipChar
-showShip (Ship Battleship _ _) = "-Battleship:  " ++ replicate 4 shipChar
-showShip (Ship Submarine _ _) =  "-Submarine:   " ++ replicate 2 shipChar ++ "\n" ++ replicate 14 ' ' ++ replicate 2 shipChar
-showShip (Ship Destroyer _ _) =  "-Destroyer:   " ++ replicate 3 shipChar
-showShip (Ship PatrolBoat _ _) = "-Patrol Boat: " ++ replicate 2 shipChar
-
--- | Displays the field state
-showFieldState :: (FieldState, Bool) -> String
-showFieldState (field, ship) = " " ++ [fieldShowChar] ++ " |"
-    where
-    fieldChar = case field of
-        Unknown -> unknownFieldStateChar
-        Miss -> missFieldStateChar
-        Hit -> hitFieldStateChar
-        Sunken -> sunkenFieldStateChar
-    fieldShowChar = if ship then shipChar else fieldChar
-
--- | Displays a row of field states with the row label with ships indicated by a boolean list
-showFieldStateRow :: (Char, [FieldState], [Bool]) -> String
-showFieldStateRow (rowLabel, fieldRow, ships) =
-    " "
-    ++ [rowLabel]
-    ++ " |"
-    ++ concatMap showFieldState (zip fieldRow ships)
-    ++ "\n"
-    ++ "   +---+---+---+---+---+---+---+---+---+---+\n"
-
--- | Displays the remaining ships on the board
-showRemainingShips :: [Ship] -> String
-showRemainingShips ships = "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") (getRemainingShips ships)
-
--- | Displays the game board with field states and ships, showing ships positions only if the board is the player's
-showBoard :: GameBoard -> Bool -> String
-showBoard (GameBoard fields ships) isYour =
-    "GameBoard:\n\n"
-    ++ "     1   2   3   4   5   6   7   8   9   10 \n"
-    ++ "   +---+---+---+---+---+---+---+---+---+---+\n"
-    ++ concatMap showFieldStateRow (zip3 ['A' ..] fields [[isYour && isShip (col, row) ships | col <- [0 .. 9 :: Int]] | row <- [0 .. 9 :: Int]])
-
 -- | Displays the game board information, including remaining ships and field states
 -- (with revealed ship positions if the board is the player's)
 showBoardInformation :: GameBoard -> Bool -> String
-showBoardInformation gameboard@(GameBoard _ ships) isYour
-    = title ++ "\n\n" ++ showRemainingShips ships ++ showBoard gameboard isYour
+showBoardInformation gameboard@(GameBoard fields ships) isYour
+    = title ++ "\n\n" ++ showRemainingShips ++ showBoard
     where
+        -- Characters used for displaying the game board
+        shipChar = '#'
+        unknownFieldStateChar = ' '
+        missFieldStateChar = 'O'
+        hitFieldStateChar = '@'
+        sunkenFieldStateChar = 'S'
+
         title = if isYour
             then "Your Game Board:"
             else "Opponent's Game Board:"
+
+        -- Displays the ships in a formatted string
+        showShip (Ship _ _ remainingHits) | remainingHits < 0 = ""
+        showShip (Ship Carrier _ _) =    "-Carrier:     " ++ replicate 4 shipChar ++ "\n" ++ replicate 14 ' ' ++ replicate 4 shipChar
+        showShip (Ship Battleship _ _) = "-Battleship:  " ++ replicate 4 shipChar
+        showShip (Ship Submarine _ _) =  "-Submarine:   " ++ replicate 2 shipChar ++ "\n" ++ replicate 14 ' ' ++ replicate 2 shipChar
+        showShip (Ship Destroyer _ _) =  "-Destroyer:   " ++ replicate 3 shipChar
+        showShip (Ship PatrolBoat _ _) = "-Patrol Boat: " ++ replicate 2 shipChar
+
+        -- Displays the remaining ships on the board
+        showRemainingShips = "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") (getRemainingShips ships)
+
+        -- Displays the field state
+        showFieldState (field, ship) = " " ++ [fieldShowChar] ++ " |"
+            where
+            fieldChar = case field of
+                Unknown -> unknownFieldStateChar
+                Miss -> missFieldStateChar
+                Hit -> hitFieldStateChar
+                Sunken -> sunkenFieldStateChar
+            fieldShowChar = if ship then shipChar else fieldChar
+
+        -- Displays a row of field states with the row label with ships indicated by a boolean list
+        showFieldStateRow (rowLabel, fieldRow, shipRow) =
+            " "
+            ++ [rowLabel]
+            ++ " |"
+            ++ concatMap showFieldState (zip fieldRow shipRow)
+            ++ "\n"
+            ++ "   +---+---+---+---+---+---+---+---+---+---+\n"
+
+        -- Displays the game board with field states and ships, showing ships positions only if the board is the player's
+        showBoard =
+            "GameBoard:\n\n"
+            ++ "     1   2   3   4   5   6   7   8   9   10 \n"
+            ++ "   +---+---+---+---+---+---+---+---+---+---+\n"
+            ++ concatMap showFieldStateRow (zip3 ['A' .. 'J'] fields [[isYour && isShip (col, row) ships | col <- [0 .. 9 :: Int]] | row <- [0 .. 9 :: Int]])
