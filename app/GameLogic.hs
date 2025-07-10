@@ -74,7 +74,7 @@ getPlayersShips board shipTypes@(shipType : rest) = do
 
         -- Try to place the ship on the board
         tryPlaceShip x y rawOrientation = do
-            let orientation = if rawOrientation == "H" then Horizontal else Vertical
+            let orientation = if rawOrientation == "h" then Horizontal else Vertical
             let newShip = createShip shipType (x, y) orientation
             case addShip board newShip of
                 Left nb -> showAndConfirmPlacement nb
