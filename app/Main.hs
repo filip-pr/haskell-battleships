@@ -1,17 +1,28 @@
 
 module Main where
 
-import Data.Either (fromLeft)
-
 import GameLogic
 
-
-testBoard = fromLeft newBoard (addShip newBoard (newShip Carrier (3, 2) Horizontal))
+showHelp :: IO ()
+showHelp = do
+    putStrLn "  - 'start': Begin the game"
+    putStrLn "  - 'help': Show this help message"
+    putStrLn "  - 'exit': Quit the game"
 
 main :: IO ()
 main = do
-    putStrLn "Enter something:"
+    putStr "\nEnter a command (type 'help' for a list of commands): "
     input <- getLine
-    putStrLn $ "You entered: " ++ input
-    --putStrLn $ (showBoardInformation testBoard True)
-    main
+
+    case input of
+        "start" -> do
+            startGame
+            main
+        "help" -> do
+            showHelp
+            main
+        "exit" -> do
+            putStrLn "Exiting the game. Goodbye!"
+        _ -> do
+            putStrLn "Invalid command."
+            main
