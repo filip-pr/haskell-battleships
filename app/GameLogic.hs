@@ -151,6 +151,48 @@ performOpponentAction gameBoard@(GameBoard fields ships) = do
                         | any (\coord -> coord `notElem` coords) hitShipFields = False
                         | otherwise = True
 
+-- | Performs the player's action by prompting for coordinates and registering a hit
+performPlayerAction :: GameBoard -> IO GameBoard
+performPlayerAction board@(GameBoard fields ships) = do
+    putStr "Enter your attack coordinates: "
+    rawInput <- getLine
+    let input = map toLower rawInput
+    let values = words input
+    -- Validate input length
+    if length values /= 2
+        then do
+            putStrLn "Invalid input. Please enter coordinates in the format '<row char> <col number>'."
+            performPlayerAction board
+        else do
+            -- Validate and parse the coordinates
+            let rawY = case values !! 0 of
+                    [y] -> Just y
+                    _   -> Nothing
+            let rawX = readMaybe (values !! 1) :: Maybe Int
+            case (rawY, rawX) of
+                (Nothing, _) -> invalidCoordinates
+                (_, Nothing) -> invalidCoordinates
+                (Just y, Just x)
+                    | y `notElem` (['a'..'j']) -> invalidCoordinates
+                    | x `notElem` [1..10] -> invalidCoordinates
+                    | otherwise -> tryAttack (x - 1, fromEnum y - fromEnum 'a')
+            where
+                -- Handle invalid coordinates
+                invalidCoordinates = do
+                    putStrLn "Invalid coordinates. Please enter A-J for row and 1-10 for column, ie. 'A 3'."
+                    performPlayerAction board
+
+                -- Try to register the hit at the given coordinates, print the result and return the new board
+                tryAttack (x, y) = do
+                    case registerHit board (x, y) of
+                        (Just newBoard, message) -> do
+                            putStrLn (message ++ "\n")
+                            return newBoard
+                        (Nothing, errorMsg) -> do
+                            putStrLn ("Invalid attack: " ++ errorMsg)
+                            performPlayerAction board
+
+
 -- | Configuration of ships for the game
 shipConfiguration :: [ShipType]
 shipConfiguration = [Carrier, Battleship, Submarine, Destroyer, PatrolBoat, PatrolBoat]

@@ -117,7 +117,7 @@ replaceFieldState newFieldState (x, y) fields
 registerHit :: GameBoard -> Coordinates -> (Maybe GameBoard, String)
 registerHit (GameBoard fields ships) coords@(x, y)
     | not (isInsideBoard [coords]) = (Nothing, "Coordinates are out of bounds!")
-    | fields !! y !! x /= Unknown = (Nothing, "FieldState already hit!")
+    | fields !! y !! x /= Unknown = (Nothing, "Coordinates already hit!")
     | otherwise = (Just newGameBoard, responseMessage) where
         hitShip = getShip coords ships
         newFieldState = case hitShip of
