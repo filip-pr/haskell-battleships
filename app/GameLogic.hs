@@ -94,6 +94,63 @@ getPlayersShips board shipTypes@(shipType : rest) = do
                     putStrLn "Invalid input. Please type 'y' to confirm or 'n' to retry."
                     showAndConfirmPlacement newBoard
 
+
+performOpponentAction :: GameBoard -> IO GameBoard
+performOpponentAction gameBoard@(GameBoard fields ships) = do
+    coordinates <- chooseCoordinates
+    case registerHit gameBoard coordinates of
+        (Just newBoard, _) -> return newBoard
+        (Nothing, errorMsg) ->
+            error ("Opponent tried to perform invalid action: " ++ errorMsg) -- This should not happen
+    where
+        -- Get all the ships that are still not sunk
+        remainingShips = getRemainingShips ships
+        -- Get list of all coordinates that were a hit (because of our strategy, they will always be part of one ship)
+        hitShipFields = filter (\coord -> getFieldState fields coord == Hit) (concatMap (\(Ship _ coords _) -> coords) remainingShips)
+
+        chooseCoordinates = if null hitShipFields
+            then do
+                -- If no hits, choose a random coordinate
+                x <- randomRIO (0 :: Int, 9 :: Int)
+                y <- randomRIO (0 :: Int, 9 :: Int)
+                if getFieldState fields (x, y) /= Unknown
+                    then chooseCoordinates -- Retry if the field is not Unknown
+                    else return (x, y) -- Return the random coordinates
+            else do
+                -- Find the top left hit coordinate
+                let topLeftHit@(tlX,tlY) = foldr (\(minX, minY) (x, y) -> if minX + minY < x + y then (minX, minY) else (x, y)) (10, 10) hitShipFields
+                -- Generate potential placements around the top left hit coordinate (most are invalid, but they get filtered out later)
+                let potentialPlacements = filter (\coords -> isInsideBoard [coords]) [(x, y) | x <- [tlX - 3 .. tlX], y <- [tlY - 3 .. tlY]]
+                -- Generate a ship of one of the remaining ship types
+                shipTypeIndex <- randomRIO (0 :: Int, length remainingShips - 1)
+                let Ship shipType _ _ = remainingShips !! shipTypeIndex
+                -- Placed the ship randomly in one of the potential placements
+                shipPlacementIndex <- randomRIO (0 :: Int, length potentialPlacements - 1)
+                let (x, y) = potentialPlacements !! shipPlacementIndex
+                -- And oriented randomly
+                shipOrientationIndex <- randomRIO (0 :: Int, 1 :: Int)
+                let orientation = if shipOrientationIndex == 0 then Horizontal else Vertical
+                let shipGuess@(Ship _ shipCoords _) = createShip shipType (x, y) orientation
+                -- Check if the guess is valid
+                if guessIsValid shipCoords
+                    then do
+                        -- Filter out coordinates that were already hit (or missed) and those further than 1 distance from any already hit field
+                        let guessCandidates = filter (\coord -> getFieldState fields coord == Unknown && distanceToMore [coord] hitShipFields == 1) shipCoords
+                        guessCandidateIndex <- randomRIO (0 :: Int, length guessCandidates - 1)
+                        return (guessCandidates !! guessCandidateIndex)
+                    else chooseCoordinates -- Retry if not valid
+                where
+                    -- Guess is valid if it is inside the board
+                    -- the guessed ship type is larger than current number of hits
+                    -- none of the guessed coordinates are already a miss
+                    -- and all of the hit coordinates are part of the guessed ship
+                    guessIsValid coords
+                        | length coords <= length hitShipFields = False
+                        | not (isInsideBoard coords) = False
+                        | any (\coord -> getFieldState fields coord == Miss) coords = False
+                        | any (\coord -> coord `notElem` coords) hitShipFields = False
+                        | otherwise = True
+
 -- | Configuration of ships for the game
 shipConfiguration :: [ShipType]
 shipConfiguration = [Carrier, Battleship, Submarine, Destroyer, PatrolBoat, PatrolBoat]
@@ -101,8 +158,9 @@ shipConfiguration = [Carrier, Battleship, Submarine, Destroyer, PatrolBoat, Patr
 -- | Starts a new Battleships game
 startGame :: IO ()
 startGame = do
-    playerBoard <- choosePlayerBoard
     opponentBoard <- placeOpponentShips emptyBoard shipConfiguration
+    playerBoard <- choosePlayerBoard
+    putStrLn (showPlayerBoard playerBoard)
     return ()
 
     where

@@ -63,11 +63,16 @@ isInsideBoard ((x, y) : rest) = 0 <= x && x < 10 && 0 <= y && y < 10 && isInside
 distance :: Coordinates -> Coordinates -> Int
 distance (x1, y1) (x2, y2) = max (abs (x1 - x2)) (abs (y1 - y2))
 
+-- | Calculates the distance from a coordinate to the nearest coordinate in a list
+distanceToMore :: [Coordinates] -> [Coordinates] -> Int
+distanceToMore _ [] = 0
+distanceToMore coords1 coords2 = minimum [distance coord otherCoord | coord <- coords1, otherCoord <- coords2]
+
 -- | Checks if a ship collides (has any 8-way neighboring or shared fields) with any other ship on the board
 collidesWith :: Ship -> [Ship] -> Bool
 collidesWith (Ship _ coords _) ships
     | null coords || null ships = False
-    | otherwise = minimum [distance coord otherCoord | coord <- coords, (Ship _ otherCoords _) <- ships, otherCoord <- otherCoords] <= 1
+    | otherwise = distanceToMore coords (concatMap (\(Ship _ otherCoords _) -> otherCoords) ships) <= 1
 
 -- | Adds a ship to the game board or returns an error message if it collides with another ship or is not fully inside the board
 addShip :: GameBoard -> Ship -> Either GameBoard String
@@ -94,6 +99,12 @@ replaceNth :: Int -> a -> [a] -> [a]
 replaceNth n newVal values
     | n < 0 || n >= length values = values
     | otherwise = take n values ++ [newVal] ++ drop (n + 1) values
+
+-- | Gets the field state at given coordinates, returning Unknown if the coordinates are out of bounds
+getFieldState :: [[FieldState]] -> Coordinates -> FieldState
+getFieldState fields (x, y)
+    | not (isInsideBoard [(x, y)]) = Unknown
+    | otherwise = fields !! y !! x
 
 -- | Replaces the field state at given coordinates with a new field state in the game board
 replaceFieldState :: FieldState -> Coordinates -> [[FieldState]] -> [[FieldState]]
@@ -142,14 +153,14 @@ getRemainingShips (ship@(Ship _ _ remainingHits) : rest)
 -- | Displays the game board information, including remaining ships and field states
 -- (with revealed ship positions if the board is the player's)
 showBoardInformation :: GameBoard -> Bool -> String
-showBoardInformation gameboard@(GameBoard fields ships) isYour
+showBoardInformation (GameBoard fields ships) isYour
     = title ++ "\n\n" ++ showRemainingShips ++ showBoard
     where
         -- Characters used for displaying the game board
         shipChar = '#'
         unknownFieldStateChar = ' '
         missFieldStateChar = 'O'
-        hitFieldStateChar = '@'
+        hitFieldStateChar = 'X'
         sunkenFieldStateChar = 'S'
 
         title = if isYour
@@ -168,14 +179,13 @@ showBoardInformation gameboard@(GameBoard fields ships) isYour
         showRemainingShips = "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") (getRemainingShips ships)
 
         -- Displays the field state
-        showFieldState (field, ship) = " " ++ [fieldShowChar] ++ " |"
+        showFieldState (field, ship) = " " ++ [fieldChar] ++ " |"
             where
             fieldChar = case field of
-                Unknown -> unknownFieldStateChar
+                Unknown -> if ship then shipChar else unknownFieldStateChar
                 Miss -> missFieldStateChar
                 Hit -> hitFieldStateChar
                 Sunken -> sunkenFieldStateChar
-            fieldShowChar = if ship then shipChar else fieldChar
 
         -- Displays a row of field states with the row label with ships indicated by a boolean list
         showFieldStateRow (rowLabel, fieldRow, shipRow) =
@@ -188,7 +198,19 @@ showBoardInformation gameboard@(GameBoard fields ships) isYour
 
         -- Displays the game board with field states and ships, showing ships positions only if the board is the player's
         showBoard =
-            "GameBoard:\n\n"
+            "GameBoard\n\n"
+            ++ "hint: "
+            ++ "Unknown: '" ++ [unknownFieldStateChar] ++ "', "
+            ++ (if isYour then ("Ship: '" ++ [shipChar] ++ "', ") else "")
+            ++ "Miss: '" ++ [missFieldStateChar] ++ "', "
+            ++ "Hit: '" ++ [hitFieldStateChar] ++ "', "
+            ++ "Sunken: '" ++ [sunkenFieldStateChar] ++ "'\n\n"
             ++ "     1   2   3   4   5   6   7   8   9   10 \n"
             ++ "   +---+---+---+---+---+---+---+---+---+---+\n"
             ++ concatMap showFieldStateRow (zip3 ['A' .. 'J'] fields [[isYour && isShip (col, row) ships | col <- [0 .. 9 :: Int]] | row <- [0 .. 9 :: Int]])
+
+showPlayerBoard :: GameBoard -> String
+showPlayerBoard board = showBoardInformation board True
+
+showOpponentBoard :: GameBoard -> String
+showOpponentBoard board = showBoardInformation board False
