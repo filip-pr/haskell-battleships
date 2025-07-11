@@ -118,7 +118,7 @@ performOpponentAction gameBoard@(GameBoard fields ships) = do
                     else return (x, y) -- Return the random coordinates
             else do
                 -- Find the top left hit coordinate
-                let topLeftHit@(tlX,tlY) = foldr (\(minX, minY) (x, y) -> if minX + minY < x + y then (minX, minY) else (x, y)) (10, 10) hitShipFields
+                let (tlX,tlY) = foldr (\(minX, minY) (x, y) -> if minX + minY < x + y then (minX, minY) else (x, y)) (10, 10) hitShipFields
                 -- Generate potential placements around the top left hit coordinate (most are invalid, but they get filtered out later)
                 let potentialPlacements = filter (\coords -> isInsideBoard [coords]) [(x, y) | x <- [tlX - 3 .. tlX], y <- [tlY - 3 .. tlY]]
                 -- Generate a ship of one of the remaining ship types
@@ -130,7 +130,7 @@ performOpponentAction gameBoard@(GameBoard fields ships) = do
                 -- And oriented randomly
                 shipOrientationIndex <- randomRIO (0 :: Int, 1 :: Int)
                 let orientation = if shipOrientationIndex == 0 then Horizontal else Vertical
-                let shipGuess@(Ship _ shipCoords _) = createShip shipType (x, y) orientation
+                let (Ship _ shipCoords _) = createShip shipType (x, y) orientation
                 -- Check if the guess is valid
                 if guessIsValid shipCoords
                     then do
@@ -153,7 +153,7 @@ performOpponentAction gameBoard@(GameBoard fields ships) = do
 
 -- | Performs the player's action by prompting for coordinates and registering a hit
 performPlayerAction :: GameBoard -> IO GameBoard
-performPlayerAction board@(GameBoard fields ships) = do
+performPlayerAction board = do
     putStr "Enter your attack coordinates: "
     rawInput <- getLine
     let input = map toLower rawInput

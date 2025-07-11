@@ -153,8 +153,8 @@ getRemainingShips (ship@(Ship _ _ remainingHits) : rest)
 -- | Displays the game board information, including remaining ships and field states
 -- (with revealed ship positions if the board is the player's)
 showBoardInformation :: GameBoard -> Bool -> String
-showBoardInformation (GameBoard fields ships) isYour
-    = title ++ "\n\n" ++ showRemainingShips ++ showBoard
+showBoardInformation (GameBoard fields ships) showShips
+    = "Board information:\n\n" ++ showRemainingShips ++ showBoard
     where
         -- Characters used for displaying the game board
         shipChar = '#'
@@ -162,10 +162,6 @@ showBoardInformation (GameBoard fields ships) isYour
         missFieldStateChar = 'O'
         hitFieldStateChar = 'X'
         sunkenFieldStateChar = 'S'
-
-        title = if isYour
-            then "Your Game Board:"
-            else "Opponent's Game Board:"
 
         -- Displays the ships in a formatted string
         showShip (Ship _ _ remainingHits) | remainingHits < 0 = ""
@@ -201,13 +197,13 @@ showBoardInformation (GameBoard fields ships) isYour
             "GameBoard\n\n"
             ++ "hint: "
             ++ "Unknown: '" ++ [unknownFieldStateChar] ++ "', "
-            ++ (if isYour then ("Ship: '" ++ [shipChar] ++ "', ") else "")
+            ++ (if showShips then ("Ship: '" ++ [shipChar] ++ "', ") else "")
             ++ "Miss: '" ++ [missFieldStateChar] ++ "', "
             ++ "Hit: '" ++ [hitFieldStateChar] ++ "', "
             ++ "Sunken: '" ++ [sunkenFieldStateChar] ++ "'\n\n"
             ++ "     1   2   3   4   5   6   7   8   9   10 \n"
             ++ "   +---+---+---+---+---+---+---+---+---+---+\n"
-            ++ concatMap showFieldStateRow (zip3 ['A' .. 'J'] fields [[isYour && isShip (col, row) ships | col <- [0 .. 9 :: Int]] | row <- [0 .. 9 :: Int]])
+            ++ concatMap showFieldStateRow (zip3 ['A' .. 'J'] fields [[showShips && isShip (col, row) ships | col <- [0 .. 9 :: Int]] | row <- [0 .. 9 :: Int]])
 
 showPlayerBoard :: GameBoard -> String
 showPlayerBoard board = showBoardInformation board True
