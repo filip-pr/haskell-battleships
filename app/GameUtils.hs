@@ -65,7 +65,6 @@ distance (x1, y1) (x2, y2) = max (abs (x1 - x2)) (abs (y1 - y2))
 
 -- | Calculates the distance from a coordinate to the nearest coordinate in a list
 distanceToMore :: [Coordinates] -> [Coordinates] -> Int
-distanceToMore _ [] = 0
 distanceToMore coords1 coords2 = minimum [distance coord otherCoord | coord <- coords1, otherCoord <- coords2]
 
 -- | Checks if a ship collides (has any 8-way neighboring or shared fields) with any other ship on the board
