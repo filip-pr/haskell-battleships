@@ -129,7 +129,9 @@ registerHit (GameBoard fields ships) coords@(x, y)
             Just (Ship _ c _) -> c
             Nothing -> []
         responseMessage = case newFieldState of
-            Sunken -> "Hit!\n" ++ show (fromJust hitShip)  ++ "sunken!"
+            Sunken ->
+                let (Ship st _ _) = fromJust hitShip
+                in "Hit!\n" ++ show st ++ " sunken!"
             Hit -> "Hit!"
             Miss -> "Miss!"
             Unknown -> error "This shouldn't happen"
@@ -153,7 +155,7 @@ getRemainingShips (ship@(Ship _ _ remainingHits) : rest)
 -- (with revealed ship positions if the board is the player's)
 showBoardInformation :: GameBoard -> Bool -> String
 showBoardInformation (GameBoard fields ships) showShips
-    = "Board information:\n\n" ++ showRemainingShips ++ showBoard
+    = showRemainingShips ++ showBoard
     where
         -- Characters used for displaying the game board
         shipChar = '#'
@@ -171,7 +173,9 @@ showBoardInformation (GameBoard fields ships) showShips
         showShip (Ship PatrolBoat _ _) = "-Patrol Boat: " ++ replicate 2 shipChar
 
         -- Displays the remaining ships on the board
-        showRemainingShips = "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") (getRemainingShips ships)
+        showRemainingShips = case showShips of
+            True -> ""
+            False -> "Remaining ships:\n\n" ++ concatMap (\ship -> showShip ship ++ "\n\n") (getRemainingShips ships)
 
         -- Displays the field state
         showFieldState (field, ship) = " " ++ [fieldChar] ++ " |"
@@ -193,8 +197,7 @@ showBoardInformation (GameBoard fields ships) showShips
 
         -- Displays the game board with field states and ships, showing ships positions only if the board is the player's
         showBoard =
-            "GameBoard\n\n"
-            ++ "hint: "
+            "hint: "
             ++ "Unknown: '" ++ [unknownFieldStateChar] ++ "', "
             ++ (if showShips then ("Ship: '" ++ [shipChar] ++ "', ") else "")
             ++ "Miss: '" ++ [missFieldStateChar] ++ "', "

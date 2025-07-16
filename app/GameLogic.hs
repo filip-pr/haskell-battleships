@@ -99,7 +99,13 @@ performOpponentAction :: GameBoard -> IO GameBoard
 performOpponentAction gameBoard@(GameBoard fields ships) = do
     coordinates <- chooseCoordinates
     case registerHit gameBoard coordinates of
-        (Just newBoard, _) -> return newBoard
+        (Just newBoard, responseMsg) -> do
+            putStrLn "Your updated board:\n"
+            putStrLn (showBoardInformation newBoard True)
+            let (x, y) = coordinates
+            putStrLn ("Opponent attacked " ++ [toEnum (y + fromEnum 'A')] ++ " " ++ show (x + 1) ++ ".\n")
+            putStrLn ("It was a " ++ responseMsg ++ "\n")
+            return newBoard
         (Nothing, errorMsg) ->
             error ("Opponent tried to perform invalid action: " ++ errorMsg) -- This should not happen
     where
@@ -107,7 +113,6 @@ performOpponentAction gameBoard@(GameBoard fields ships) = do
         remainingShips = getRemainingShips ships
         -- Get list of all coordinates that were a hit (because of our strategy, they will always be part of one ship)
         hitShipFields = filter (\coord -> getFieldState fields coord == Hit) (concatMap (\(Ship _ coords _) -> coords) remainingShips)
-
         chooseCoordinates = if null hitShipFields
             then do
                 -- If no hits, choose a random coordinate
@@ -186,7 +191,9 @@ performPlayerAction board = do
                 tryAttack (x, y) = do
                     case registerHit board (x, y) of
                         (Just newBoard, message) -> do
-                            putStrLn (message ++ "\n")
+                            putStrLn "Opponent's updated board:\n"
+                            putStrLn (showBoardInformation newBoard False)
+                            putStrLn ("Your last attack was a " ++ message ++ "\n")
                             return newBoard
                         (Nothing, errorMsg) -> do
                             putStrLn ("Invalid attack: " ++ errorMsg)
@@ -197,13 +204,32 @@ performPlayerAction board = do
 shipConfiguration :: [ShipType]
 shipConfiguration = [Carrier, Battleship, Submarine, Destroyer, PatrolBoat, PatrolBoat]
 
+progressGame :: GameBoard -> GameBoard -> IO ()
+progressGame playerBoard opponentBoard = do
+    putStrLn "Your turn!\n"
+    newOpponentBoard <- performPlayerAction opponentBoard
+    if allShipsSunken newOpponentBoard
+        then putStrLn "Congratulations! You have sunk all opponent's ships!"
+        else do
+            putStrLn "Opponent's turn!\n"
+            putStrLn "Press Enter to continue..."
+            _ <- getLine
+            newPlayerBoard <- performOpponentAction playerBoard
+            if allShipsSunken newPlayerBoard
+                then putStrLn "Game over! All your ships have been sunk!"
+                else progressGame newPlayerBoard newOpponentBoard
+    where
+        allShipsSunken (GameBoard _ ships) = getRemainingShips ships == []
+
+
 -- | Starts a new Battleships game
 startGame :: IO ()
 startGame = do
     opponentBoard <- placeOpponentShips emptyBoard shipConfiguration
     playerBoard <- choosePlayerBoard
+    putStrLn "\nYour board:\n"
     putStrLn (showPlayerBoard playerBoard)
-    return ()
+    progressGame playerBoard opponentBoard
 
     where
         -- Let the player choose the configuration of their board (manual or random)

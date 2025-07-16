@@ -28,7 +28,7 @@ gameLogicTests = testGroup "GameLogic Tests"
                         let placedShips = map (\(Ship t _ _) -> t) ships
                         in all (\ship -> ship `elem` placedShips) shipConfiguration &&
                             (length placedShips == length shipConfiguration)
-        ],
+        ]
 
     , testGroup "performOpponentAction Tests"
         [
