@@ -25,10 +25,10 @@ placeShipsRandomly board shipTypes@(shipType : rest) = do
 placeOpponentShips :: GameBoard -> [ShipType] -> IO GameBoard
 placeOpponentShips = placeShipsRandomly
 
--- | Gets the player's ships by prompting for input
-getPlayersShips :: GameBoard -> [ShipType] -> IO GameBoard
-getPlayersShips board [] = return board
-getPlayersShips board shipTypes@(shipType : rest) = do
+-- | Gets the player's ship placement by prompting for input
+placePlayersShips :: GameBoard -> [ShipType] -> IO GameBoard
+placePlayersShips board [] = return board
+placePlayersShips board shipTypes@(shipType : rest) = do
     putStr $ "\nPlace your " ++ show shipType ++ ": "
     rawInput <- getLine
     let input = map toLower rawInput
@@ -42,7 +42,7 @@ getPlayersShips board shipTypes@(shipType : rest) = do
                     showAndConfirmPlacement newBoard
                 else do
                     putStrLn "Invalid input. Please enter positioning in the format '<row char> <col number> <H/V>', or enter 'random' for random ship placement."
-                    getPlayersShips board shipTypes
+                    placePlayersShips board shipTypes
         else validateAndPlace values
     where
         -- Validate and place the ship based on user input
@@ -65,12 +65,12 @@ getPlayersShips board shipTypes@(shipType : rest) = do
         -- Handle invalid coordinates
         invalidCoordinates = do
             putStrLn "Invalid coordinates. Please enter A-J for row and 1-10 for column, ie. 'A 3 <orientation>'."
-            getPlayersShips board shipTypes
+            placePlayersShips board shipTypes
 
         -- Handle invalid orientation
         invalidOrientation = do
             putStrLn "Invalid orientation. Please enter 'H' for horizontal or 'V' for vertical."
-            getPlayersShips board shipTypes
+            placePlayersShips board shipTypes
 
         -- Try to place the ship on the board
         tryPlaceShip x y rawOrientation = do
@@ -80,7 +80,7 @@ getPlayersShips board shipTypes@(shipType : rest) = do
                 Left nb -> showAndConfirmPlacement nb
                 Right errorMsg -> do
                     putStrLn ("Invalid placement. " ++ errorMsg)
-                    getPlayersShips board shipTypes
+                    placePlayersShips board shipTypes
 
         -- Show the board and confirm placement
         showAndConfirmPlacement newBoard = do
@@ -88,8 +88,8 @@ getPlayersShips board shipTypes@(shipType : rest) = do
             putStr "Type 'y' to confirm the placement or 'n' to retry: "
             input <- getLine
             case input of
-                "y" -> getPlayersShips newBoard rest
-                "n" -> getPlayersShips board shipTypes
+                "y" -> placePlayersShips newBoard rest
+                "n" -> placePlayersShips board shipTypes
                 _   -> do
                     putStrLn "Invalid input. Please type 'y' to confirm or 'n' to retry."
                     showAndConfirmPlacement newBoard
@@ -237,7 +237,7 @@ startGame = do
             rawInput <- getLine
             let input = map toLower rawInput
             case input of
-                "m" -> getPlayersShips emptyBoard shipConfiguration
+                "m" -> placePlayersShips emptyBoard shipConfiguration
                 "r" -> placeShipsRandomly emptyBoard shipConfiguration
                 _   -> do
                     putStrLn "Invalid input. Please type 'm' for manual placement or 'r' for random placement."
