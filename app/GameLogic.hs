@@ -104,7 +104,7 @@ performOpponentAction gameBoard@(GameBoard fields ships) = do
             putStrLn (showBoardInformation newBoard True)
             let (x, y) = coordinates
             putStrLn ("Opponent attacked " ++ [toEnum (y + fromEnum 'A')] ++ " " ++ show (x + 1) ++ ".\n")
-            putStrLn ("It was a " ++ responseMsg ++ "\n")
+            putStrLn ("Opponents attack was a " ++ responseMsg ++ "\n")
             return newBoard
         (Nothing, errorMsg) ->
             error ("Opponent tried to perform invalid action: " ++ errorMsg) -- This should not happen
@@ -193,7 +193,7 @@ performPlayerAction board = do
                         (Just newBoard, message) -> do
                             putStrLn "Opponent's updated board:\n"
                             putStrLn (showBoardInformation newBoard False)
-                            putStrLn ("Your last attack was a " ++ message ++ "\n")
+                            putStrLn ("Your attack was a " ++ message ++ "\n")
                             return newBoard
                         (Nothing, errorMsg) -> do
                             putStrLn ("Invalid attack: " ++ errorMsg)
@@ -211,8 +211,7 @@ progressGame playerBoard opponentBoard = do
     if allShipsSunken newOpponentBoard
         then putStrLn "Congratulations! You have sunk all opponent's ships!"
         else do
-            putStrLn "Opponent's turn!\n"
-            putStrLn "Press Enter to continue..."
+            putStrLn "Opponent's turn! (press Enter to progress)\n"
             _ <- getLine
             newPlayerBoard <- performOpponentAction playerBoard
             if allShipsSunken newPlayerBoard
