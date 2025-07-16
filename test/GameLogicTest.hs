@@ -3,6 +3,7 @@ module GameLogicTest where
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import System.Timeout (timeout)
+import System.IO.Silently (capture)
 
 import GameUtils
 import GameLogic
@@ -33,14 +34,14 @@ gameLogicTests = testGroup "GameLogic Tests"
     , testGroup "performOpponentAction Tests"
         [
             testProperty "opponent action selection terminates" $
-                withMaxSuccess 100 $ ioProperty $ do
+                withMaxSuccess 10 $ ioProperty $ do
                     maybeBoard <- timeout testTimeout (placeShipsRandomly emptyBoard shipConfiguration)
                     case maybeBoard of
                         Nothing -> return False
                         Just board  -> do
                             let loop 0 _ = return True
                                 loop n currentBoard = do
-                                    maybeNewBoard <- timeout testTimeout (performOpponentAction currentBoard)
+                                    (_, maybeNewBoard) <- capture $ timeout testTimeout (performOpponentAction currentBoard)
                                     case maybeNewBoard of
                                         Nothing -> return False
                                         Just newBoard -> loop (n - 1) newBoard

@@ -110,3 +110,4 @@ test-suite battleships-test
                       tasty-hunit >= 0.10.2 && < 0.11,
                       QuickCheck >= 2.16.0 && < 2.17,
                       tasty-quickcheck >= 0.11.1 && < 0.12,
+                      silently >= 1.2.5 && < 1.3,
